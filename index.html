@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>فرم برنامه‌ریزی هفتگی پیشرفته</title>
+<title>فرم برنامه‌ریزی هفتگی با ارسال فایل</title>
 <link href="https://cdn.fontcdn.ir/Font/Persian/Vazir/Vazir.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jalaali-js/dist/jalaali.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jalaali-js/dist/jalaali.min.js"></script>
 <style>
 body{font-family:'Vazir',sans-serif;background:#f7fbfd;padding:10px;}
 table{width:100%;border-collapse:collapse;margin-top:10px;}
@@ -24,6 +24,7 @@ button,a{padding:6px 10px;border:none;background:#0f4c75;color:#fff;border-radiu
 <body>
 
 <h2>فرم برنامه‌ریزی مطالعه هفتگی</h2>
+
 <div>
 <label>نام دانش‌آموز:</label>
 <input type="text" id="studentName" placeholder="مثلاً علی رضایی">
@@ -55,7 +56,7 @@ button,a{padding:6px 10px;border:none;background:#0f4c75;color:#fff;border-radiu
   <tbody></tbody>
 </table>
 
-<h3>پیش‌نمایش زنده جدول</h3>
+<h3>پیش‌نمایش جدول</h3>
 <table id="previewTable">
   <thead>
     <tr>
@@ -70,9 +71,13 @@ button,a{padding:6px 10px;border:none;background:#0f4c75;color:#fff;border-radiu
   <tbody></tbody>
 </table>
 
-<h3>آپلود فایل‌ها</h3>
+<h3>فایل‌ها و ضبط</h3>
 <input type="file" id="attachment" accept="image/*,audio/*,video/*" multiple>
 <div id="previewAttachment"></div>
+<div class="inline">
+<button id="recordAudio">🎤 ضبط صدا</button>
+<button id="recordVideo">📹 ضبط ویدئو</button>
+</div>
 
 <div class="controls">
 <button id="saveLocal">💾 ذخیره محلی</button>
@@ -96,7 +101,7 @@ const managerPhone='989367104429';
 const managerEmail='favasystemyallali@gmail.com';
 let attachments=[];
 
-// ساخت جدول و پیش‌نمایش
+// ساخت جدول‌ها
 function createTables(){
   days.forEach((day,i)=>{
     const tr=document.createElement('tr');
@@ -126,7 +131,7 @@ function createTables(){
   });
 }
 
-// پیش‌نمایش زنده
+// بروزرسانی پیش‌نمایش
 function updatePreview(){
   days.forEach((day,i)=>{
     const dateInput=document.querySelector(`[name=date_${i}]`);
@@ -148,7 +153,7 @@ function updatePreview(){
   updateSummary();
 }
 
-// سلول‌های پرشده + ذخیره محلی
+// سلول‌های پرشده و ذخیره محلی
 function markAndUpdate(el){
   const cell=el.closest('td');
   if(el.value.trim()!=='') cell.classList.add('filled');
@@ -191,50 +196,4 @@ function previewAttachmentFile(f){
   let el;
   if(f.type.startsWith('image')) el=document.createElement('img'), el.src=f.data;
   else if(f.type.startsWith('video')) el=document.createElement('video'), el.src=f.data, el.controls=true;
-  else if(f.type.startsWith('audio')) el=document.createElement('audio'), el.src=f.data, el.controls=true;
-  previewAttachment.appendChild(el);
-}
-attachment.addEventListener('change',e=>{
-  Array.from(e.target.files).forEach(f=>{
-    const reader=new FileReader();
-    reader.onload=function(evt){
-      attachments.push({name:f.name,type:f.type,data:evt.target.result});
-      previewAttachmentFile({name:f.name,type:f.type,data:evt.target.result});
-      localStorage.setItem('attachments',JSON.stringify(attachments));
-    };
-    reader.readAsDataURL(f);
-  });
-});
-
-// دکمه‌ها
-document.getElementById('saveLocal').addEventListener('click',()=>{ alert('ذخیره محلی انجام شد'); });
-document.getElementById('clearLocal').addEventListener('click',()=>{
-  if(confirm('آیا پاک شود؟')){ localStorage.clear(); location.reload(); }
-});
-document.getElementById('exportPdf').addEventListener('click',async()=>{
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF('p','pt','a4');
-  const content=document.getElementById('previewTable');
-  const canvas=await html2canvas(content,{scale:2});
-  const imgData=canvas.toDataURL('image/png');
-  doc.addImage(imgData,'PNG',20,20,555,canvas.height*555/canvas.width);
-  // افزودن تصاویر
-  let y=canvas.height*555/canvas.width+40;
-  for(let f of attachments){
-    if(f.type.startsWith('image')){
-      const img = new Image();
-      img.src=f.data;
-      await new Promise(r=>{img.onload=()=>{doc.addImage(img,'PNG',20,y,200,200*img.height/img.width); y+=210; r();}});      
-    } else {
-      doc.text(`فایل: ${f.name}`,20,y); y+=20;
-    }
-  }
-  doc.save('study_plan.pdf');
-});
-document.getElementById('sendWhatsapp').addEventListener('click',()=>{
-  let msg=`فرم برنامه‌ریزی تکمیل شد. دانش‌آموز: ${document.getElementById('studentName').value||'(بدون نام)'}\n`;
-  msg+=`لینک فایل‌ها: (دانلود PDF بعد از ذخیره)\n`;
-  window.open('https://wa.me/'+managerPhone+'?text='+encodeURIComponent(msg),'_blank');
-});
-document.getElementById('sendEmail').addEventListener('click',()=>{
- 
+  else if(f.type.startsWith('audio')) el=document.createElement('audio'), el
