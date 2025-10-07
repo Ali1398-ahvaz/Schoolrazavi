@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>فرم برنامه‌ریزی هفتگی — پیشرفته</title>
+<title>فرم برنامه‌ریزی هفتگی پیشرفته</title>
 <link href="https://cdn.fontcdn.ir/Font/Persian/Vazir/Vazir.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
@@ -17,13 +17,28 @@ th{background:#0f4c75;color:#fff;}
 input,select{padding:4px;width:100%;margin-bottom:2px;}
 .inline{display:flex;gap:4px;justify-content:center;align-items:center;}
 .controls{margin-top:10px;display:flex;gap:5px;flex-wrap:wrap;}
-button{padding:6px 10px;border:none;background:#0f4c75;color:#fff;border-radius:6px;cursor:pointer;}
+button,a{padding:6px 10px;border:none;background:#0f4c75;color:#fff;border-radius:6px;cursor:pointer;text-decoration:none;}
 #previewAttachment img, #previewAttachment video, #previewAttachment audio{max-width:120px; max-height:100px; display:block; margin:4px 0;}
 </style>
 </head>
 <body>
 
 <h2>فرم برنامه‌ریزی مطالعه هفتگی</h2>
+<div>
+<label>نام دانش‌آموز:</label>
+<input type="text" id="studentName" placeholder="مثلاً علی رضایی">
+<label>کلاس:</label>
+<select id="className">
+  <option value="">انتخاب کلاس</option>
+  <option value="7/1">۷/۱</option>
+  <option value="7/2">۷/۲</option>
+</select>
+<label>شماره تماس ولی:</label>
+<input type="text" id="parentPhone" placeholder="مثلاً 0912...">
+<label>تاریخ تکمیل فرم:</label>
+<input type="text" id="formDate" placeholder="مثلاً ۱۴۰۴/۰۷/۱۴">
+</div>
+
 <div id="summary">خلاصه: هنوز پر نشده</div>
 
 <table id="scheduleTable">
@@ -40,7 +55,7 @@ button{padding:6px 10px;border:none;background:#0f4c75;color:#fff;border-radius:
   <tbody></tbody>
 </table>
 
-<h3>پیش‌نمایش زنده</h3>
+<h3>پیش‌نمایش زنده جدول</h3>
 <table id="previewTable">
   <thead>
     <tr>
@@ -55,7 +70,7 @@ button{padding:6px 10px;border:none;background:#0f4c75;color:#fff;border-radius:
   <tbody></tbody>
 </table>
 
-<h3>آپلود فایل</h3>
+<h3>آپلود فایل‌ها</h3>
 <input type="file" id="attachment" accept="image/*,audio/*,video/*" multiple>
 <div id="previewAttachment"></div>
 
@@ -63,8 +78,9 @@ button{padding:6px 10px;border:none;background:#0f4c75;color:#fff;border-radius:
 <button id="saveLocal">💾 ذخیره محلی</button>
 <button id="clearLocal" style="background:#f55;">🧹 پاک‌سازی</button>
 <button id="exportPdf">📄 ذخیره PDF</button>
-<button id="sendWhatsapp">💬 واتساپ مدیر</button>
-<button id="sendEmail">✉️ ایمیل مدیر</button>
+<button id="sendWhatsapp">💬 ارسال واتساپ مدیر</button>
+<button id="sendEmail">✉️ ارسال ایمیل مدیر</button>
+<a href="tel:+989367104429" style="background:#2b7da3">📞 تماس با مدیر</a>
 </div>
 
 <script>
@@ -80,7 +96,7 @@ const managerPhone='989367104429';
 const managerEmail='favasystemyallali@gmail.com';
 let attachments=[];
 
-// ساخت جدول
+// ساخت جدول و پیش‌نمایش
 function createTables(){
   days.forEach((day,i)=>{
     const tr=document.createElement('tr');
@@ -110,13 +126,12 @@ function createTables(){
   });
 }
 
-// بروزرسانی پیش‌نمایش
+// پیش‌نمایش زنده
 function updatePreview(){
   days.forEach((day,i)=>{
     const dateInput=document.querySelector(`[name=date_${i}]`);
-    const previewDateCell=previewTbody.rows[i].querySelector('.preview-date');
-    previewDateCell.textContent=dateInput.value;
-    previewDateCell.classList.toggle('filled', dateInput.value.trim()!=='');
+    previewTbody.rows[i].querySelector('.preview-date').textContent=dateInput.value;
+    previewTbody.rows[i].querySelector('.preview-date').classList.toggle('filled', dateInput.value.trim()!=='');
     for(let n=0;n<3;n++){
       const lesson=document.querySelector(`[name=lesson_${n}_${i}]`);
       const from=document.querySelector(`[name=from_${n}_${i}]`);
@@ -133,7 +148,7 @@ function updatePreview(){
   updateSummary();
 }
 
-// ذخیره محلی و رنگ‌دهی سلول‌ها
+// سلول‌های پرشده + ذخیره محلی
 function markAndUpdate(el){
   const cell=el.closest('td');
   if(el.value.trim()!=='') cell.classList.add('filled');
@@ -142,7 +157,7 @@ function markAndUpdate(el){
   updatePreview();
 }
 
-// بازیابی محلی
+// بازیابی ذخیره محلی
 function loadLocal(){
   document.querySelectorAll('input,select').forEach(el=>{
     if(localStorage.getItem(el.name)) el.value=localStorage.getItem(el.name);
@@ -171,7 +186,7 @@ function fillJalaliDates(){
   });
 }
 
-// فایل‌ها
+// پیش‌نمایش فایل‌ها
 function previewAttachmentFile(f){
   let el;
   if(f.type.startsWith('image')) el=document.createElement('img'), el.src=f.data;
@@ -194,10 +209,7 @@ attachment.addEventListener('change',e=>{
 // دکمه‌ها
 document.getElementById('saveLocal').addEventListener('click',()=>{ alert('ذخیره محلی انجام شد'); });
 document.getElementById('clearLocal').addEventListener('click',()=>{
-  if(confirm('آیا پاک شود؟')){
-    localStorage.clear();
-    location.reload();
-  }
+  if(confirm('آیا پاک شود؟')){ localStorage.clear(); location.reload(); }
 });
 document.getElementById('exportPdf').addEventListener('click',async()=>{
   const { jsPDF } = window.jspdf;
@@ -206,22 +218,23 @@ document.getElementById('exportPdf').addEventListener('click',async()=>{
   const canvas=await html2canvas(content,{scale:2});
   const imgData=canvas.toDataURL('image/png');
   doc.addImage(imgData,'PNG',20,20,555,canvas.height*555/canvas.width);
+  // افزودن تصاویر
+  let y=canvas.height*555/canvas.width+40;
+  for(let f of attachments){
+    if(f.type.startsWith('image')){
+      const img = new Image();
+      img.src=f.data;
+      await new Promise(r=>{img.onload=()=>{doc.addImage(img,'PNG',20,y,200,200*img.height/img.width); y+=210; r();}});      
+    } else {
+      doc.text(`فایل: ${f.name}`,20,y); y+=20;
+    }
+  }
   doc.save('study_plan.pdf');
 });
 document.getElementById('sendWhatsapp').addEventListener('click',()=>{
-  const url='https://wa.me/'+managerPhone+'?text='+encodeURIComponent('لینک PDF فرم: study_plan.pdf');
-  window.open(url,'_blank');
+  let msg=`فرم برنامه‌ریزی تکمیل شد. دانش‌آموز: ${document.getElementById('studentName').value||'(بدون نام)'}\n`;
+  msg+=`لینک فایل‌ها: (دانلود PDF بعد از ذخیره)\n`;
+  window.open('https://wa.me/'+managerPhone+'?text='+encodeURIComponent(msg),'_blank');
 });
 document.getElementById('sendEmail').addEventListener('click',()=>{
-  const subject=encodeURIComponent('فرم برنامه‌ریزی مطالعه');
-  const body=encodeURIComponent('لینک PDF فرم: study_plan.pdf');
-  window.open(`mailto:${managerEmail}?subject=${subject}&body=${body}`,'_blank');
-});
-
-createTables();
-fillJalaliDates();
-loadLocal();
-updatePreview();
-</script>
-</body>
-</html>
+ 
