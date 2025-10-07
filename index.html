@@ -3,28 +3,27 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>فرم هفتگی با تقویم شمسی</title>
+<title>فرم برنامه‌ریزی هفتگی — پیشرفته</title>
 <link href="https://cdn.fontcdn.ir/Font/Persian/Vazir/Vazir.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
-<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/persian-date@1.1.0/dist/persian-date.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jalaali-js/dist/jalaali.min.js"></script>
 <style>
-body{font-family:'Vazir',sans-serif;padding:10px;background:#f7fbfd;direction:rtl;}
-table{border-collapse:collapse;width:100%;margin-top:10px;}
+body{font-family:'Vazir',sans-serif;background:#f7fbfd;padding:10px;}
+table{width:100%;border-collapse:collapse;margin-top:10px;}
 th,td{border:1px solid #ccc;padding:6px;text-align:center;vertical-align:middle;}
 th{background:#0f4c75;color:#fff;}
 .filled{background:#c8f7c5;}
 input,select{padding:4px;width:100%;margin-bottom:2px;}
+.inline{display:flex;gap:4px;justify-content:center;align-items:center;}
 .controls{margin-top:10px;display:flex;gap:5px;flex-wrap:wrap;}
 button{padding:6px 10px;border:none;background:#0f4c75;color:#fff;border-radius:6px;cursor:pointer;}
-.inline{display:flex;gap:4px;justify-content:center;align-items:center;}
+#previewAttachment img, #previewAttachment video, #previewAttachment audio{max-width:120px; max-height:100px; display:block; margin:4px 0;}
 </style>
 </head>
 <body>
 
-<h2>فرم برنامه‌ریزی مطالعه هفتگی — نسخه پیشرفته</h2>
+<h2>فرم برنامه‌ریزی مطالعه هفتگی</h2>
 <div id="summary">خلاصه: هنوز پر نشده</div>
 
 <table id="scheduleTable">
@@ -41,11 +40,31 @@ button{padding:6px 10px;border:none;background:#0f4c75;color:#fff;border-radius:
   <tbody></tbody>
 </table>
 
+<h3>پیش‌نمایش زنده</h3>
+<table id="previewTable">
+  <thead>
+    <tr>
+      <th>روز</th>
+      <th>تاریخ</th>
+      <th>نوبت 1</th>
+      <th>نوبت 2</th>
+      <th>نوبت 3</th>
+      <th>توضیحات</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<h3>آپلود فایل</h3>
+<input type="file" id="attachment" accept="image/*,audio/*,video/*" multiple>
+<div id="previewAttachment"></div>
+
 <div class="controls">
-<button id="saveLocal">💾 ذخیره</button>
-<button id="toPdf">📄 PDF</button>
-<button id="whatsapp">💬 واتساپ</button>
-<button id="email">✉️ ایمیل</button>
+<button id="saveLocal">💾 ذخیره محلی</button>
+<button id="clearLocal" style="background:#f55;">🧹 پاک‌سازی</button>
+<button id="exportPdf">📄 ذخیره PDF</button>
+<button id="sendWhatsapp">💬 واتساپ مدیر</button>
+<button id="sendEmail">✉️ ایمیل مدیر</button>
 </div>
 
 <script>
@@ -53,144 +72,156 @@ const days=['شنبه','یک‌شنبه','دوشنبه','سه‌شنبه','چه�
 const lessons=['','ریاضی','علوم','ادبیات','عربی','مطالعات اجتماعی','زبان انگلیسی','مرور'];
 const hours=['','۷','۸','۹','۱۰','۱۱','۱۲','۱۳','۱۴','۱۵','۱۶','۱۷','۱۸','۱۹','۲۰','۲۱','۲۲'];
 const tbody=document.querySelector('#scheduleTable tbody');
+const previewTbody=document.querySelector('#previewTable tbody');
 const summaryEl=document.getElementById('summary');
+const attachment=document.getElementById('attachment');
+const previewAttachment=document.getElementById('previewAttachment');
 const managerPhone='989367104429';
 const managerEmail='favasystemyallali@gmail.com';
+let attachments=[];
 
 // ساخت جدول
-days.forEach((day,i)=>{
-  const tr=document.createElement('tr');
-  tr.innerHTML=`
-    <td>${day}</td>
-    <td><input type="text" class="date" name="date_${i}"></td>
-    ${[0,1,2].map(n=>`
-      <td>
-        <select class="lesson" name="lesson_${n}_${i}">${lessons.map(l=>`<option value="${l}">${l||'درس'}</option>`).join('')}</select>
-        <div class="inline">
-          <select class="from" name="from_${n}_${i}">${hours.map(h=>`<option value="${h}">${h||'از'}</option>`).join('')}</select>
-          <span>تا</span>
-          <select class="to" name="to_${n}_${i}">${hours.map(h=>`<option value="${h}">${h||'تا'}</option>`).join('')}</select>
-        </div>
-      </td>`).join('')}
-    <td><input type="text" class="note" name="note_${i}"></td>
-  `;
-  tbody.appendChild(tr);
-});
-
-// تقویم شمسی
-$(document).ready(function(){
-  $(".date").each(function(){
-    $(this).persianDatepicker({
-      format: 'YYYY/MM/DD',
-      initialValue: true,
-      autoClose: true,
-      onSelect: function(){
-        markAndSave(this);
-      }
-    });
+function createTables(){
+  days.forEach((day,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${day}</td>
+      <td><input type="text" class="date" name="date_${i}"></td>
+      ${[0,1,2].map(n=>`
+        <td>
+          <select class="lesson" name="lesson_${n}_${i}">${lessons.map(l=>`<option value="${l}">${l||'درس'}</option>`).join('')}</select>
+          <div class="inline">
+            <select class="from" name="from_${n}_${i}">${hours.map(h=>`<option value="${h}">${h||'از'}</option>`).join('')}</select>
+            <span>تا</span>
+            <select class="to" name="to_${n}_${i}">${hours.map(h=>`<option value="${h}">${h||'تا'}</option>`).join('')}</select>
+          </div>
+        </td>`).join('')}
+      <td><input type="text" class="note" name="note_${i}"></td>
+    `;
+    tbody.appendChild(tr);
+    const trPreview=document.createElement('tr');
+    trPreview.innerHTML=`
+      <td>${day}</td>
+      <td class="preview-date"></td>
+      ${[0,1,2].map(n=>`<td class="preview-lesson${n}"></td>`).join('')}
+      <td class="preview-note"></td>
+    `;
+    previewTbody.appendChild(trPreview);
   });
-});
+}
 
-// رنگ سلول و ذخیره محلی
-function markAndSave(el){
+// بروزرسانی پیش‌نمایش
+function updatePreview(){
+  days.forEach((day,i)=>{
+    const dateInput=document.querySelector(`[name=date_${i}]`);
+    const previewDateCell=previewTbody.rows[i].querySelector('.preview-date');
+    previewDateCell.textContent=dateInput.value;
+    previewDateCell.classList.toggle('filled', dateInput.value.trim()!=='');
+    for(let n=0;n<3;n++){
+      const lesson=document.querySelector(`[name=lesson_${n}_${i}]`);
+      const from=document.querySelector(`[name=from_${n}_${i}]`);
+      const to=document.querySelector(`[name=to_${n}_${i}]`);
+      const cell=previewTbody.rows[i].querySelector(`.preview-lesson${n}`);
+      if(lesson.value){ cell.textContent=`${lesson.value} (${from.value} تا ${to.value})`; cell.classList.add('filled'); }
+      else cell.textContent='', cell.classList.remove('filled');
+    }
+    const noteInput=document.querySelector(`[name=note_${i}]`);
+    const noteCell=previewTbody.rows[i].querySelector('.preview-note');
+    noteCell.textContent=noteInput.value;
+    noteCell.classList.toggle('filled', noteInput.value.trim()!=='');
+  });
+  updateSummary();
+}
+
+// ذخیره محلی و رنگ‌دهی سلول‌ها
+function markAndUpdate(el){
   const cell=el.closest('td');
   if(el.value.trim()!=='') cell.classList.add('filled');
   else cell.classList.remove('filled');
   localStorage.setItem(el.name,el.value);
-  updateSummary();
+  updatePreview();
 }
 
-// ادامه خودکار ساعت‌ها
-function autoFillNext(fromEl){
-  const td=fromEl.closest('td');
-  const tr=td.closest('tr');
-  const tds=Array.from(tr.querySelectorAll('td')).filter(td=>td.querySelector('select.from'));
-  for(let i=0;i<tds.length-1;i++){
-    if(tds[i].contains(fromEl)){
-      const nextFrom=tds[i+1].querySelector('select.from');
-      const nextTo=tds[i+1].querySelector('select.to');
-      if(nextFrom.value==='' && fromEl.value!==''){
-        nextFrom.value=fromEl.value;
-        nextTo.value='';
-        markAndSave(nextFrom);
-        markAndSave(nextTo);
-      }
-      break;
-    }
-  }
-}
-
-document.querySelectorAll('input, select').forEach(el=>{
-  if(localStorage.getItem(el.name)) el.value=localStorage.getItem(el.name);
-  markAndSave(el);
-  el.addEventListener('input', ()=>markAndSave(el));
-  el.addEventListener('change', ()=>{
-    markAndSave(el);
-    if(el.classList.contains('to')) autoFillNext(el);
+// بازیابی محلی
+function loadLocal(){
+  document.querySelectorAll('input,select').forEach(el=>{
+    if(localStorage.getItem(el.name)) el.value=localStorage.getItem(el.name);
+    markAndUpdate(el);
+    el.addEventListener('input',()=>markAndUpdate(el));
+    el.addEventListener('change',()=>markAndUpdate(el));
   });
-});
+  if(localStorage.getItem('attachments')) attachments=JSON.parse(localStorage.getItem('attachments'));
+  attachments.forEach(f=>previewAttachmentFile(f));
+}
 
-// خلاصه فرم
+// خلاصه
 function updateSummary(){
   let filledCount=0;
   document.querySelectorAll('select').forEach(s=>{if(s.value) filledCount++;});
   summaryEl.textContent=`خلاصه: ${filledCount} انتخاب انجام شده`;
 }
 
-// ذخیره کل فرم
-document.getElementById('saveLocal').addEventListener('click', ()=>{
-  document.querySelectorAll('input, select').forEach(el=>localStorage.setItem(el.name,el.value));
-  alert('ذخیره شد!');
+// تاریخ شمسی خودکار
+function fillJalaliDates(){
+  const today=new Date();
+  document.querySelectorAll('.date').forEach((input,idx)=>{
+    const nextDay=new Date(today.getTime()+idx*86400000);
+    const j=jalaali.toJalaali(nextDay);
+    input.value=`${j.jy}/${String(j.jm).padStart(2,'0')}/${String(j.jd).padStart(2,'0')}`;
+  });
+}
+
+// فایل‌ها
+function previewAttachmentFile(f){
+  let el;
+  if(f.type.startsWith('image')) el=document.createElement('img'), el.src=f.data;
+  else if(f.type.startsWith('video')) el=document.createElement('video'), el.src=f.data, el.controls=true;
+  else if(f.type.startsWith('audio')) el=document.createElement('audio'), el.src=f.data, el.controls=true;
+  previewAttachment.appendChild(el);
+}
+attachment.addEventListener('change',e=>{
+  Array.from(e.target.files).forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=function(evt){
+      attachments.push({name:f.name,type:f.type,data:evt.target.result});
+      previewAttachmentFile({name:f.name,type:f.type,data:evt.target.result});
+      localStorage.setItem('attachments',JSON.stringify(attachments));
+    };
+    reader.readAsDataURL(f);
+  });
 });
 
-// PDF
-document.getElementById('toPdf').addEventListener('click', ()=>{
+// دکمه‌ها
+document.getElementById('saveLocal').addEventListener('click',()=>{ alert('ذخیره محلی انجام شد'); });
+document.getElementById('clearLocal').addEventListener('click',()=>{
+  if(confirm('آیا پاک شود؟')){
+    localStorage.clear();
+    location.reload();
+  }
+});
+document.getElementById('exportPdf').addEventListener('click',async()=>{
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({orientation:'landscape'});
-  let text='فرم برنامه‌ریزی مطالعه هفتگی\n\n';
-  days.forEach((day,i)=>{
-    text+=day+' | '+document.querySelector(`[name=date_${i}]`).value+' | ';
-    for(let n=0;n<3;n++){
-      text+=document.querySelector(`[name=lesson_${n}_${i}]`).value+' ';
-      text+=document.querySelector(`[name=from_${n}_${i}]`).value+' تا ';
-      text+=document.querySelector(`[name=to_${n}_${i}]`).value+' | ';
-    }
-    text+=document.querySelector(`[name=note_${i}]`).value+'\n';
-  });
-  doc.text(text,10,10);
-  doc.save('weekly_schedule.pdf');
+  const doc = new jsPDF('p','pt','a4');
+  const content=document.getElementById('previewTable');
+  const canvas=await html2canvas(content,{scale:2});
+  const imgData=canvas.toDataURL('image/png');
+  doc.addImage(imgData,'PNG',20,20,555,canvas.height*555/canvas.width);
+  doc.save('study_plan.pdf');
+});
+document.getElementById('sendWhatsapp').addEventListener('click',()=>{
+  const url='https://wa.me/'+managerPhone+'?text='+encodeURIComponent('لینک PDF فرم: study_plan.pdf');
+  window.open(url,'_blank');
+});
+document.getElementById('sendEmail').addEventListener('click',()=>{
+  const subject=encodeURIComponent('فرم برنامه‌ریزی مطالعه');
+  const body=encodeURIComponent('لینک PDF فرم: study_plan.pdf');
+  window.open(`mailto:${managerEmail}?subject=${subject}&body=${body}`,'_blank');
 });
 
-// واتساپ
-document.getElementById('whatsapp').addEventListener('click', ()=>{
-  let msg='فرم برنامه‌ریزی تکمیل شد.%0A';
-  days.forEach((day,i)=>{
-    msg+=day+': ';
-    for(let n=0;n<3;n++){
-      msg+=document.querySelector(`[name=lesson_${n}_${i}]`).value+' ';
-      msg+=document.querySelector(`[name=from_${n}_${i}]`).value+' تا ';
-      msg+=document.querySelector(`[name=to_${n}_${i}]`).value+' | ';
-    }
-    msg+=document.querySelector(`[name=note_${i}]`).value+'%0A';
-  });
-  window.open(`https://wa.me/${managerPhone}?text=${msg}`,'_blank');
-});
-
-// ایمیل
-document.getElementById('email').addEventListener('click', ()=>{
-  let body='فرم برنامه‌ریزی تکمیل شد.%0A';
-  days.forEach((day,i)=>{
-    body+=day+': ';
-    for(let n=0;n<3;n++){
-      body+=document.querySelector(`[name=lesson_${n}_${i}]`).value+' ';
-      body+=document.querySelector(`[name=from_${n}_${i}]`).value+' تا ';
-      body+=document.querySelector(`[name=to_${n}_${i}]`).value+' | ';
-    }
-    body+=document.querySelector(`[name=note_${i}]`).value+'%0A';
-  });
-  window.open(`mailto:${managerEmail}?subject=فرم برنامه‌ریزی&body=${body}`,'_blank');
-});
+createTables();
+fillJalaliDates();
+loadLocal();
+updatePreview();
 </script>
-
 </body>
 </html>
