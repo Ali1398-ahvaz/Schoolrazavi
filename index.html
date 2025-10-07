@@ -3,9 +3,8 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>فرم برنامه‌ریزی هفتگی — Schoolrazavi</title>
+<title>فرم برنامه‌ریزی مطالعه هفتگی — Schoolrazavi</title>
 <link href="https://cdn.fontcdn.ir/Font/Persian/Vazir/Vazir.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@latest/dist/css/persian-datepicker.min.css"/>
 <style>
 :root{
   --primary:#0f4c75;
@@ -87,7 +86,7 @@ tbody tr:nth-child(even){background:var(--row2)}
 
     <div>
       <label for="formDate">تاریخ تکمیل</label>
-      <input id="formDate" name="formDate" placeholder="۱۴۰۴/۰۷/۱۴">
+      <input id="formDate" name="formDate" placeholder="مثلاً: ۱۴۰۴/۰۷/۱۴">
     </div>
 
     <div class="full table-wrap" aria-live="polite">
@@ -121,18 +120,17 @@ tbody tr:nth-child(even){background:var(--row2)}
         <button class="btn btn-ghost" id="printBtn" style="background:#fff;color:var(--primary);border:1px solid var(--primary)">🖨 چاپ</button>
         <button class="btn btn-ghost" id="clearBtn" style="background:#f55;color:#fff">🧹 پاک‌سازی</button>
       </div>
-      <div class="note">توضیح: ساعت‌ها از ۷ تا ۲۲ انتخابی هستند و فیلدهای پرشده سبز روشن می‌شوند.</div>
+      <div class="note">توضیح: ساعت‌ها از ۷ تا ۲۲ انتخابی هستند. همه فیلدهای پر شده رنگ سبز روشن خواهند داشت.</div>
     </div>
   </div>
 </div>
 
-<!-- modal to ask friend's number -->
 <div class="modal-back" id="modalBack">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <h3 id="modalTitle">ارسال به دوست — شماره را وارد کنید</h3>
     <div>
-      <label for="friendNumber">شماره دوست (مثلاً 98912...)</label>
-      <input id="friendNumber" placeholder="مثلاً 98912..." inputmode="numeric" pattern="[0-9]*">
+      <label for="friendNumber">شماره دوست (با پیش شماره کشور)</label>
+      <input id="friendNumber" placeholder="مثلاً: 98912..." inputmode="numeric" pattern="[0-9]*">
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
       <button class="btn" id="modalSend">ارسال</button>
@@ -141,143 +139,10 @@ tbody tr:nth-child(even){background:var(--row2)}
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/persian-date@latest/dist/persian-date.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@latest/dist/js/persian-datepicker.min.js"></script>
-
 <script>
-const managerPhone = '989367104429';
-const managerEmail = 'favasystemyallali@gmail.com';
-const shareLink = 'https://Ali1398-ahvaz.github.io/Schoolrazavi/';
-const days = ['شنبه','یک‌شنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنج‌شنبه','جمعه'];
-const lessons = ['','ریاضی','علوم','ادبیات','عربی','مطالعات اجتماعی','زبان انگلیسی','مرور'];
-const hours = ['','۷','۸','۹','۱۰','۱۱','۱۲','۱۳','۱۴','۱۵','۱۶','۱۷','۱۸','۱۹','۲۰','۲۱','۲۲'];
-
-const tbody = document.getElementById('scheduleBody');
-
-// build table rows
-days.forEach((day, i)=>{
-  const tr = document.createElement('tr');
-  tr.innerHTML = `<td class="day-cell">${day}</td>
-    ${[0,1,2].map(n=>`<td class="schedule-cell">
-      <div class="inline">
-        <select class="small-select field-lesson" name="lesson_${n}_${i}">${lessons.map(l=>`<option value="${l}">${l||'درس'}</option>`).join('')}</select>
-        <span>از</span>
-        <select class="small-select field-from" name="from_${n}_${i}">${hours.map(h=>`<option value="${h}">${h||'س'}</option>`).join('')}</select>
-        <span>تا</span>
-        <select class="small-select field-to" name="to_${n}_${i}">${hours.map(h=>`<option value="${h}">${h||'س'}</option>`).join('')}</select>
-      </div>
-    </td>`).join('')}
-    <td><input name="note_${i}" placeholder="توضیحات کوتاه"></td>`;
-  tbody.appendChild(tr);
-});
-
-// Persian datepicker
-$("#formDate").persianDatepicker({
-  format: 'YYYY/MM/DD',
-  initialValueType: 'persian',
-  calendarType: 'persian',
-  autoClose: true
-});
-
-// helper functions
-function keyFor(el){ return 'study_form_'+(el.name||el.id); }
-const selector = 'input, select, textarea';
-
-function saveAll(){
-  document.querySelectorAll(selector).forEach(el=>{
-    try{localStorage.setItem(keyFor(el), el.value||'');}catch(e){}
-  });
-  updateSummary();
-  markFilledFields();
-  alert('ذخیره محلی انجام شد.');
-}
-
-function loadAll(){
-  document.querySelectorAll(selector).forEach(el=>{
-    const v = localStorage.getItem(keyFor(el));
-    if(v!==null) el.value=v;
-  });
-  markFilledFields();
-  updateSummary();
-}
-
-function markFilledFields(){
-  document.querySelectorAll(selector).forEach(el=>{
-    const parent = el.closest('td');
-    if(!parent) return;
-    const filled = el.value && el.value.trim() !== '';
-    if(filled) parent.classList.add('filled');
-    else parent.classList.remove('filled');
-  });
-}
-
-const summaryEl = document.getElementById('summary');
-function generateSummary(){
-  const name = document.getElementById('studentName').value || '(بدون نام)';
-  const cls = document.getElementById('className').value || '(بدون کلاس)';
-  let cnt=0;
-  document.querySelectorAll('#scheduleBody select').forEach(s=>{if(s.value) cnt++;});
-  return `دانش‌آموز: ${name} — کلاس: ${cls} — انتخاب‌ها: ${cnt}`;
-}
-function updateSummary(){summaryEl.textContent=generateSummary();}
-
-// events
-document.addEventListener('input',e=>{
-  if(e.target.matches(selector)){
-    try{localStorage.setItem(keyFor(e.target), e.target.value||'');}catch(e){}
-    debounceUpdate();
-  }
-});
-
-let tmr=null;
-function debounceUpdate(){if(tmr) clearTimeout(tmr); tmr=setTimeout(()=>{updateSummary(); markFilledFields();},200);}
-
-document.getElementById('saveLocal').addEventListener('click',saveAll);
-document.getElementById('clearBtn').addEventListener('click',()=>{
-  if(!confirm('پاک شود؟')) return;
-  document.querySelectorAll(selector).forEach(el=>el.value='');
-  Object.keys(localStorage).forEach(k=>{if(k.startsWith('study_form_')) localStorage.removeItem(k);});
-  markFilledFields(); updateSummary();
-});
-document.getElementById('printBtn').addEventListener('click',()=>window.print());
-document.getElementById('toPdf').addEventListener('click',()=>window.print());
-
-// WhatsApp manager
-document.getElementById('whatsappManager').addEventListener('click',()=>{
-  saveAll();
-  const name = encodeURIComponent(document.getElementById('studentName').value||'');
-  const cls = encodeURIComponent(document.getElementById('className').value||'');
-  let msg=`سلام مدیر، فرم تکمیل شد.%0Aدانش‌آموز: ${name}%0Aکلاس: ${cls}%0A`;
-  days.forEach((d,i)=>{
-    let parts=[];
-    [0,1,2].forEach(n=>{
-      const lesson=document.querySelector(`[name="lesson_${n}_${i}"]`).value||'';
-      const from=document.querySelector(`[name="from_${n}_${i}"]`).value||'';
-      const to=document.querySelector(`[name="to_${n}_${i}"]`).value||'';
-      if(lesson && from && to) parts.push(`${lesson} — از ${from} تا ${to}`);
-    });
-    const note=document.querySelector(`[name="note_${i}"]`).value||'';
-    if(parts.length) msg+=`${d}: ${parts.join(' | ')}${note? ' — '+encodeURIComponent(note):''}%0A`;
-  });
-  window.open(`https://wa.me/${managerPhone}?text=${msg}`,'_blank');
-});
-
-// Send to friend modal
-const modalBack=document.getElementById('modalBack');
-document.getElementById('sendFriend').addEventListener('click',()=>{document.getElementById('friendNumber').value=''; modalBack.style.display='flex';});
-document.getElementById('modalCancel').addEventListener('click',()=>modalBack.style.display='none');
-document.getElementById('modalSend').addEventListener('click',()=>{
-  const raw=document.getElementById('friendNumber').value.trim();
-  const digits=raw.replace(/[^0-9]/g,'');
-  if(!digits || digits.length<9){alert('شماره صحیح وارد کنید'); return;}
-  const waUrl=`https://wa.me/${digits}?text=${encodeURIComponent(shareLink)}`;
-  modalBack.style.display='none';
-  window.open(waUrl,'_blank');
-});
-
-// Email
-document.getElementById('emailBtn').addEventListener('click',()=>{
-  saveAll();
-  const name=encodeURIComponent(document.getElementById('studentName').value||'');
-  const cls=encodeURIComponent(document.getElementById('class
+const managerPhone='989367104429';
+const managerEmail='favasystemyallali@gmail.com';
+const shareLink='https://Ali1398-ahvaz.github.io/Schoolrazavi/';
+const days=['شنبه','یک‌شنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنج‌شنبه','جمعه'];
+const lessons=['','ریاضی','علوم','ادبیات','عربی','مطالعات اجتماعی','زبان انگلیسی','مرور'];
+const hours=['','۷','۸','۹','۱۰','۱۱','۱۲','۱۳','۱۴','۱۵','۱۶','۱۷','۱۸','۱۹','۲۰','۲۱','۲
