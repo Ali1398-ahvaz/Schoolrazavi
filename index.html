@@ -10,7 +10,7 @@
   --primary:#0f4c75;
   --accent:#2b7da3;
   --muted:#f7fbfd;
-  --filled-bg:#d6f5d6; /* رنگ برای ورودی‌های پرشده */
+  --filled-bg:#d6f5d6;
   --empty-bg:#fff;
   --row1:#ffffff;
   --row2:#f3f9fc;
@@ -120,17 +120,16 @@ tbody tr:nth-child(even){background:var(--row2)}
         <button class="btn btn-ghost" id="printBtn" style="background:#fff;color:var(--primary);border:1px solid var(--primary)">🖨 چاپ</button>
         <button class="btn btn-ghost" id="clearBtn" style="background:#f55;color:#fff">🧹 پاک‌سازی</button>
       </div>
-      <div class="note">توضیح: ساعت‌ها از ۷ تا ۲۲ انتخابی هستند. برای ارسال لینک خام به دوست از دکمه «ارسال به دوست» استفاده کنید.</div>
+      <div class="note">توضیح: ساعت‌ها از ۷ تا ۲۲ انتخابی هستند. همه فیلدهای پر شده رنگ سبز روشن خواهند داشت.</div>
     </div>
   </div>
 </div>
 
-<!-- modal to ask friend's number -->
 <div class="modal-back" id="modalBack">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <h3 id="modalTitle">ارسال به دوست — شماره را وارد کنید</h3>
     <div>
-      <label for="friendNumber">شماره دوست (با پیش شماره کشور، مثال: 98912...)</label>
+      <label for="friendNumber">شماره دوست (با پیش شماره کشور)</label>
       <input id="friendNumber" placeholder="مثلاً: 98912..." inputmode="numeric" pattern="[0-9]*">
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
@@ -141,222 +140,9 @@ tbody tr:nth-child(even){background:var(--row2)}
 </div>
 
 <script>
-/* =========== Configuration =========== */
-const managerPhone = '989367104429'; // بدون پیش‌صفر
-const managerEmail = 'favasystemyallali@gmail.com';
-const shareLink = 'https://Ali1398-ahvaz.github.io/Schoolrazavi/'; // <-- اگر لینک دیگری می‌خواهی این‌جا را تغییر بده
-/* ===================================== */
-
-const days = ['شنبه','یک‌شنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنج‌شنبه','جمعه'];
-const lessons = ['','ریاضی','علوم','ادبیات','عربی','مطالعات اجتماعی','زبان انگلیسی','مرور'];
-const hours = ['','۷','۸','۹','۱۰','۱۱','۱۲','۱۳','۱۴','۱۵','۱۶','۱۷','۱۸','۱۹','۲۰','۲۱','۲۲'];
-
-const scheduleBody = document.getElementById('scheduleBody');
-
-// build compact rows: lesson select + from/to selects (all select menus)
-days.forEach((day, i) => {
-  const tr = document.createElement('tr');
-  tr.innerHTML = `
-    <td class="day-cell" style="min-width:86px">${day}</td>
-    ${[0,1,2].map(n => `
-      <td class="schedule-cell">
-        <div class="inline" style="gap:6px;flex-wrap:nowrap">
-          <select class="small-select field-lesson" name="lesson_${n}_${i}">
-            ${lessons.map(l=>`<option value="${l}">${l||'درس'}</option>`).join('')}
-          </select>
-          <span style="opacity:.7">—</span>
-          <select class="small-select field-from" name="from_${n}_${i}">
-            ${hours.map(h=>`<option value="${h}">${h||'س'}</option>`).join('')}
-          </select>
-          <span style="opacity:.7">تا</span>
-          <select class="small-select field-to" name="to_${n}_${i}">
-            ${hours.map(h=>`<option value="${h}">${h||'س'}</option>`).join('')}
-          </select>
-        </div>
-      </td>`).join('')}
-    <td>
-      <input name="note_${i}" class="note-input" placeholder="توضیحات کوتاه" style="width:100%;padding:6px;border:1px solid #e1eef6;border-radius:6px;font-size:13px">
-    </td>
-  `;
-  scheduleBody.appendChild(tr);
-});
-
-// helpers: selector and localStorage keys
-const selector = 'input, select, textarea';
-function keyFor(el){ return 'study_form_' + (el.name || el.id); }
-
-function saveAll(){
-  document.querySelectorAll(selector).forEach(el=>{
-    try{ localStorage.setItem(keyFor(el), el.value || ''); }catch(e){}
-  });
-  updateSummary();
-  alert('ذخیره محلی انجام شد.');
-}
-
-function loadAll(){
-  document.querySelectorAll(selector).forEach(el=>{
-    const v = localStorage.getItem(keyFor(el));
-    if(v !== null) el.value = v;
-  });
-  updateSummary();
-  markFilledFields();
-}
-
-// visual: mark filled fields with class .filled
-function markFilledFields(){
-  document.querySelectorAll(selector).forEach(el=>{
-    const parentCell = el.closest('td');
-    if(!parentCell) return;
-    const filled = (el.tagName.toLowerCase() === 'select') ? (el.value && el.value !== '') : (el.value && el.value.trim() !== '');
-    if(filled) parentCell.classList.add('filled');
-    else parentCell.classList.remove('filled');
-  });
-}
-
-// summary generation
-const summaryEl = document.getElementById('summary');
-function generateSummary(){
-  const name = document.getElementById('studentName').value || '(بدون نام)';
-  const cls = document.getElementById('className').value || '(بدون کلاس)';
-  let cnt = 0;
-  document.querySelectorAll('#scheduleBody select').forEach(s=>{ if(s.value && s.value !== '') cnt++; });
-  return `دانش‌آموز: ${name} — کلاس: ${cls} — انتخاب‌ها: ${cnt}`;
-}
-function updateSummary(){ summaryEl.textContent = generateSummary(); }
-
-let tmr = null;
-function debounceUpdate(){ if(tmr) clearTimeout(tmr); tmr = setTimeout(()=>{ updateSummary(); markFilledFields(); }, 150); }
-
-// event listeners for auto-save + marking filled
-document.addEventListener('input', function(e){
-  if(e.target && e.target.matches(selector)){
-    try{ localStorage.setItem(keyFor(e.target), e.target.value || ''); }catch(e){}
-    debounceUpdate();
-  }
-});
-
-// attachment preview store (careful with size)
-const attachment = document.getElementById('attachment');
-attachment.addEventListener('change', e=>{
-  const f = e.target.files && e.target.files[0];
-  if(!f) return;
-  const reader = new FileReader();
-  reader.onload = function(evt){
-    try{
-      localStorage.setItem('study_form_attachment_name', f.name);
-      localStorage.setItem('study_form_attachment_type', f.type);
-      localStorage.setItem('study_form_attachment_data', evt.target.result);
-      alert('فایل در حافظه محلی ذخیره شد (اگر حجم زیاد باشد ذخیره نشد).');
-    }catch(err){
-      console.warn('حجم فایل بزرگ است؛ ذخیره کامل ممکن نیست.');
-    }
-  };
-  reader.readAsDataURL(f);
-});
-
-// on start
-loadAll();
-
-// clear
-document.getElementById('clearBtn').addEventListener('click', ()=>{
-  if(!confirm('آیا مطمئن هستید که فرم پاک شود؟')) return;
-  document.querySelectorAll(selector).forEach(el=>el.value='');
-  Object.keys(localStorage).forEach(k=>{ if(k.startsWith('study_form_')) localStorage.removeItem(k); });
-  updateSummary();
-  markFilledFields();
-});
-
-// print/pdf (use print)
-document.getElementById('printBtn').addEventListener('click', ()=> window.print());
-document.getElementById('toPdf').addEventListener('click', ()=> window.print());
-
-// save
-document.getElementById('saveLocal').addEventListener('click', saveAll);
-
-// whatsapp to manager: build message with filled schedule summary
-document.getElementById('whatsappManager').addEventListener('click', ()=>{
-  saveAll();
-  const name = encodeURIComponent(document.getElementById('studentName').value || '(بدون نام)');
-  const cls = encodeURIComponent(document.getElementById('className').value || '(بدون کلاس)');
-  let msg = `سلام مدیر،%0Aفرم برنامه‌ریزی تکمیل شد.%0Aدانش‌آموز: ${name}%0Aکلاس: ${cls}%0A%0A`;
-  days.forEach((d,i)=>{
-    let parts = [];
-    [0,1,2].forEach(n=>{
-      const lesson = document.querySelector(`[name="lesson_${n}_${i}"]`).value || '';
-      const from = document.querySelector(`[name="from_${n}_${i}"]`).value || '';
-      const to = document.querySelector(`[name="to_${n}_${i}"]`).value || '';
-      if(lesson && from && to) parts.push(`${lesson} — از ${from} تا ${to}`);
-    });
-    const note = document.querySelector(`[name="note_${i}"]`).value || '';
-    if(parts.length) msg += `${d}: ${parts.join(' | ')}${note? ' — ' + encodeURIComponent(note) : ''}%0A`;
-  });
-  const wa = `https://wa.me/${managerPhone}?text=` + msg;
-  window.open(wa, '_blank');
-});
-
-// Send to friend: open modal, get number, then send raw shareLink
-const modalBack = document.getElementById('modalBack');
-const modalSend = document.getElementById('modalSend');
-const modalCancel = document.getElementById('modalCancel');
-
-document.getElementById('sendFriend').addEventListener('click', ()=>{
-  // open modal
-  document.getElementById('friendNumber').value = '';
-  modalBack.style.display = 'flex';
-  document.getElementById('friendNumber').focus();
-});
-
-modalCancel.addEventListener('click', ()=> { modalBack.style.display = 'none'; });
-
-modalSend.addEventListener('click', ()=>{
-  const raw = document.getElementById('friendNumber').value.trim();
-  // sanitize digits
-  const digits = raw.replace(/[^0-9]/g,'');
-  if(!digits || digits.length < 9){
-    alert('لطفاً شمارهٔ صحیح وارد کنید (مثلاً 98912...)');
-    return;
-  }
-  // open whatsapp with the raw share link only
-  const waUrl = `https://wa.me/${digits}?text=${encodeURIComponent(shareLink)}`;
-  modalBack.style.display = 'none';
-  window.open(waUrl, '_blank');
-});
-
-// email button: prepare summary email
-document.getElementById('emailBtn').addEventListener('click', ()=>{
-  saveAll();
-  const name = encodeURIComponent(document.getElementById('studentName').value || '(بدون نام)');
-  const cls = encodeURIComponent(document.getElementById('className').value || '(بدون کلاس)');
-  let body = `فرم برنامه‌ریزی تکمیل شد.%0Aدانش‌آموز: ${name}%0Aکلاس: ${cls}%0A%0A`;
-  days.forEach((d,i)=>{
-    let parts = [];
-    [0,1,2].forEach(n=>{
-      const lesson = document.querySelector(`[name="lesson_${n}_${i}"]`).value || '';
-      const from = document.querySelector(`[name="from_${n}_${i}"]`).value || '';
-      const to = document.querySelector(`[name="to_${n}_${i}"]`).value || '';
-      if(lesson && from && to) parts.push(`${lesson} — از ${from} تا ${to}`);
-    });
-    const note = document.querySelector(`[name="note_${i}"]`).value || '';
-    if(parts.length) body += `${d}: ${parts.join(' | ')}${note? ' — ' + encodeURIComponent(note) : ''}%0A`;
-  });
-  const subject = encodeURIComponent('فرم برنامه‌ریزی مطالعه هفتگی');
-  window.open(`mailto:${managerEmail}?subject=${subject}&body=${body}`, '_blank');
-});
-
-// accessibility: close modal on Esc
-document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') modalBack.style.display = 'none'; });
-
-// highlight filled fields live
-document.addEventListener('change', (e)=>{
-  if(e.target && (e.target.matches('select') || e.target.matches('input'))){
-    markFilledFields();
-  }
-});
-
-// initial mark
-markFilledFields();
-updateSummary();
-
-</script>
-</body>
-</html>
+const managerPhone='989367104429';
+const managerEmail='favasystemyallali@gmail.com';
+const shareLink='https://Ali1398-ahvaz.github.io/Schoolrazavi/';
+const days=['شنبه','یک‌شنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنج‌شنبه','جمعه'];
+const lessons=['','ریاضی','علوم','ادبیات','عربی','مطالعات اجتماعی','زبان انگلیسی','مرور'];
+const hours=['','۷','۸','۹','۱۰','۱۱','۱۲','۱۳','۱۴','۱۵','۱۶','۱۷','۱۸','۱۹','۲۰','۲۱','۲
